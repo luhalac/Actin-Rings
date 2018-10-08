@@ -17,7 +17,7 @@ class actin_ring:
         self.L = L # actin filament lenght in nm
         self.N = N #total number of rotations
         self.rxy = 40  # radial resolution in nm
-        self.D = D # axon diameter in nm
+        self.D = D - 3*self.rxy # axon diameter in nm
         self.x = x # distance in nm
         self.Npoints = len(self.x)
         self.center = center     
@@ -63,3 +63,13 @@ class actin_ring:
                  distpdfn[k,:] = dist.pdf(self.x)/max(dist.pdf(self.x))
                  
             self.psim[i,:] = np.sum(distpdfn, axis = 0)
+
+if __name__ == '__main__':
+    
+    N=1
+    x = np.linspace(0,1300,60)
+    ring = actin_ring(160,N,500,x, 700);
+    for i in np.arange(N):
+        plt.plot(x,ring.psim[i,:])        
+
+           
