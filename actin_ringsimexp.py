@@ -18,8 +18,8 @@ import math
 
 
 
-
-plt.close("all")
+#
+#plt.close("all")
 
 class exp_profiles:
     
@@ -84,7 +84,7 @@ class actin_ring:
         self.π = np.pi
         self.L = L # actin filament lenght in nm
         self.N = N #total number of rotations
-        self.rxy = 40  # radial resolution in nm
+        self.rxy = 20  # radial resolution in nm
         self.D = D -3*self.rxy# axon diameter in nm
         self.x = x # distance in nm
         self.Npoints = len(self.x)
@@ -153,7 +153,7 @@ if __name__ == '__main__':
     L = np.arange(Lmin, Lmax, DL);
     
     # number of rotations φ for each L
-    N = 20;
+    N = 10;
 
     
     # define empty arrays for pearson corr (pcoef)
@@ -199,8 +199,10 @@ if __name__ == '__main__':
                     pcoef[jj, k, l] = pearsonr(psim[l,:], pexp[i,j])[0]
                     pcoefrec[jj, k, l] = pearsonr(psimrecn[l,:], pexprecn)[0]
     
-            ind = np.unravel_index(np.argmax(pcoef[jj,:,:], axis=None), pcoef.shape) ;            
+            ind = np.unravel_index(np.argmax(pcoefrec[jj,:,:], axis=None), pcoef.shape) ;            
             Lmaxc[jj] = L[ind[1]]
+            
+            
             Kmax[jj] = np.int(np.pi/(np.arcsin(Lmaxc[jj]/D[i,j])))
 
             corrmax[jj] = pcoef[jj,ind[1], ind[2]]
@@ -208,7 +210,7 @@ if __name__ == '__main__':
             
 #
             jj = jj + 1
-#          
+          
 
 #get rid of max correlations under a certain value u
 u = 0.7
