@@ -14,18 +14,19 @@ from scipy.stats import norm
 
 class sim_image:
     
-    def __init__(self, L=100, N=1, D=400, *args, **kwargs):
+    def __init__(self, L, N=1, D=400, *args, **kwargs):
         
         self.π = np.pi
         self.px_size = 20 # px size in nm
         self.im_size = 2000 # im size in nm
         self.rxy = 40 # radial resolution in nm
+        self.sigma = self.rxy/2.35
         
         # axon parameters
         self.r = 10  # ring widht CHEQUEAR ESTO 
-        self.D = D - 3*self.r # axon diameter in nm
-        self.axon_start=.2
-        self.axon_end=  self.axon_start + self.D/1000
+        self.D = D  # axon diameter in nm
+        self.axon_start=.4
+        self.axon_end=  self.axon_start + self.D/self.im_size
         
         # ring parameters
         self.L = L # actin filament lenght in nm
@@ -38,19 +39,15 @@ class sim_image:
         self.center = self.im_size/2     
 
         
-        self.wvlen = 2*190 # longitudinal wvlen in nm 
+        self.wvlen = 190 # longitudinal wvlen in nm 
         self.phase = 0.25
         self.b = 6
-        self.g_noise=0.25
+        self.g_noise=0.2
         self.c = 0.8 # contrast
-        self.theta = 0 # axon orientation
+        self.theta = 90 # axon orientation
         
-        self.label = 0.5 # labeling efficency. It is very low because of how we define
+        self.label = 0.1 # labeling efficency. It is very low because of how we define
                           # the spectrin rings in a continous way
-            
-        self.i = 45        # angle is fixed at 30 deg since it was rather irrelevant for
-                          # this simulations, although I tried to avoid 0 or 90 since
-                          # they could be regarded as a particular case
         
         self.n_molecules = 1000  # this variable will keep track of how many "fluorophores
                              # you end up putting in your simulated image, it should
@@ -109,7 +106,7 @@ class sim_image:
         # sum X and Y components
         self.XYt = np.array(self.Xt + self.Yt)
         # convert to radians and scale by frequency
-        self.XYf = self.XYt * self.freq * 2*self.π 
+        self.XYf = self.XYt * self.freq/2 * 2*self.π 
         # make 2D sinewave
         self.sin2d = np.sin(self.XYf + self.phaseRad)
         self.ringpattern = self.sin2d**self.b
@@ -119,37 +116,38 @@ class sim_image:
         a1 = np.int(self.axon_end * self.im_size)
 
         # intensity offset given that contrast is c
-        Ioffset = (1-self.c)*np.max(self.ringpattern)/(2*self.c)  # Ibkg depends on the contrast
-        
+        Iringoffset = (1-self.c)*np.max(self.ringpattern)/(2*self.c)  # Ibkg depends on the contrast
+
         
         # create ring profile mask
         ring_mask = np.zeros(self.im_size*self.im_size)
         psim = self.psim[0,:]
+        
         for i in np.arange(self.im_size):
             ring_mask[i*self.im_size:(i+1)*self.im_size] = psim.astype(int)
             
         self.ring_mask = ring_mask.reshape(self.im_size, self.im_size)
-        self.ring_mask = np.transpose(self.ring_mask)
+#        self.ring_mask = np.transpose(self.ring_mask)
         
         # creates the axon_mask and the ring_mask
         axon_mask = np.zeros(self.im_size*self.im_size)        
-        axon_mask[a0:a1] = 1
-        self.axon_mask = axon_mask.reshape(self.im_size, self.im_size)
+        axon_mask[a0*self.im_size:a1*self.im_size] = 1
+        self.axon_mask = np.transpose(axon_mask.reshape(self.im_size, self.im_size))
 
 
         ring_offset = np.ones(self.im_size*self.im_size)
-        ring_offset = Ioffset*ring_offset.reshape(self.im_size, self.im_size)
+        ring_offset = Iringoffset*ring_offset.reshape(self.im_size, self.im_size)
+
         
         # normalizes and creates the final simulated axon with spectrin rings
 
-        norm_f = np.max(self.ringpattern+ring_offset)
-
-        axon_res = (self.ring_mask*(self.ringpattern + ring_offset) + Ioffset*self.axon_mask)/norm_f
-        axon_res = axon_res + self.g_noise*np.random.rand(self.im_size, self.im_size)
+        norm_f = np.max(self.ringpattern+ring_offset+self.axon_mask)        
+        self.axon_res = (self.ring_mask*(self.ringpattern + ring_offset)+0.15*self.axon_mask)/norm_f
+        self.axon_res = self.axon_res + self.g_noise*np.random.rand(self.im_size, self.im_size)
 #        axon_res = ndi.rotate(axon_res, angle, reshape=False)
 
 
-        self.data = axon_res.astype(np.float32) # result to be used in simulations
+        self.data = self.axon_res.astype(np.float32) # result to be used in simulations
         
 #        fig,ax= plt.subplots()
 #        ax.imshow(self.data)
@@ -184,7 +182,7 @@ class sim_image:
         image = result.reshape(self.im_size, self.im_size)   
             
         # convolute the 1 nm molecules with the resolution of the microscope    
-        image = ndi.gaussian_filter(image, self.rxy/2.35)            
+        image = ndi.gaussian_filter(image, self.sigma)            
         image_nobkg = image/np.max(image)  # normalization
         j = 0 
         
@@ -194,19 +192,17 @@ class sim_image:
         
         # bkg is simulated as a gaussian noise around a certain value
         
-        bkg_array = np.arange(0, 4, 1)
-        for bkg in [1]:
+        bkg_array = np.arange(0.5, 1.5 , 0.5)
+        for bkg in [0.5]:
             # addition of bkg + normalization
             image1 = image_nobkg + bkg *(1 + 0.1*np.random.rand(self.im_size, self.im_size))
             image1 = image1/np.max(image1)
-            fig,ax = plt.subplots()
-            plt.imshow(image1)
+
             # resample of the image to get 20 nm pixel
-            # TO DO: change 0.05 to a variable
+            # TO DO: change 0.05 to a variable 
     
             image1 = ndi.interpolation.zoom(image1, 1/self.px_size)
-            fig,ax = plt.subplots()
-            plt.imshow(image1)
+
             # get rid of possible negative values produced by the sigma of the bkg
             # they are usually just a few pixels, no big deal
             image1[image1 < 0] = 0
@@ -216,19 +212,17 @@ class sim_image:
                 image1 = np.random.poisson(self.signal*image1)
             else:
                 pass
-            fig,ax = plt.subplots()
-            plt.imshow(image1)
+
             # here you take a 50 x 50 pixels (1 μm x 1 μm) from the 
             # 100 x 100 pixels (2 μm x 2 μm) simulation, this was done to remove
             # boundary effects
             subimage = image1[25:75, 25:75]
             subimage = subimage.astype(np.float32)
-            fig,ax = plt.subplots()
-            plt.imshow(subimage)
+
             # saves the image with data in the title
             # TO DO: make a metadata file instead of saving in the title
     
-            tiff.imsave('{}testAxon_angle{}_bkg{}_label{}_contrast{}_w1{}_poisson{}.tiff'.format(j, self.i, np.around(bkg, 1), self.label, self.c, self.w1, self.poisson), subimage)
+            tiff.imsave('{}testAxon_bkg{}_label{}_contrast{}_w1{}_poisson{}.tiff'.format(j, np.around(bkg, 1), self.label, self.c, self.w1, self.poisson), subimage)
             j = j + 1
             
         # prints the number of molecules to check if it is a reasnoable number
