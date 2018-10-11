@@ -66,7 +66,7 @@ class actin_ring:
 
 if __name__ == '__main__':
     
-    N=1
+    N=2
     x = np.linspace(0,1300,60)
     ring = actin_ring(160,N,500,x, 700);
     for i in np.arange(N):
