@@ -26,7 +26,7 @@ class exp_profiles:
     def __init__(self, d, *args, **kwargs):
         
         self.rootdir = r"C:\Users\CibionPC\Documents\Lu Lopez\Actin Spectrin Rings\Exp Analysis\STED profiles"
-        self.folders = ['DIV8', 'DIV14', 'DIV21', 'DIV28', 'DIV40']
+        self.folders = ['DIV8', 'DIV14', 'DIV21', 'DIV28', 'DIV40', 'sim100bis']
         self.pxSize = 20 # px size in nm
         
         self.π = np.pi
@@ -84,8 +84,8 @@ class actin_ring:
         self.π = np.pi
         self.L = L # actin filament lenght in nm
         self.N = N #total number of rotations
-        self.rxy = 20  # radial resolution in nm
-        self.D = D -3*self.rxy# axon diameter in nm
+        self.rxy = 40  # radial sigma in nm
+        self.D = D -2*self.rxy# axon diameter in nm
         self.x = x # distance in nm
         self.Npoints = len(self.x)
         self.center = center     
@@ -137,7 +137,7 @@ if __name__ == '__main__':
     
     # load all exp profiles from axons and rings of selected DIV
     # 0 8DIV 1 14DIV 2 21DIV 3 28DIV 4 40DIV
-    ring_exp = exp_profiles(2)
+    ring_exp = exp_profiles(5)
     pexp = ring_exp.pexp;
     Naxons = ring_exp.Naxons;
     Nrings = ring_exp.Nrings;
@@ -146,9 +146,9 @@ if __name__ == '__main__':
     center = ring_exp.center;
         
     # L range to scan in simulated ring
-    Lmin = 100; 
-    Lmax = 200;
-    DL = 5;
+    Lmin = 40; 
+    Lmax = 240;
+    DL = 10;
     NL = np.int((Lmax-Lmin)/DL);
     L = np.arange(Lmin, Lmax, DL);
     
@@ -199,7 +199,7 @@ if __name__ == '__main__':
                     pcoef[jj, k, l] = pearsonr(psim[l,:], pexp[i,j])[0]
                     pcoefrec[jj, k, l] = pearsonr(psimrecn[l,:], pexprecn)[0]
     
-            ind = np.unravel_index(np.argmax(pcoefrec[jj,:,:], axis=None), pcoef.shape) ;            
+            ind = np.unravel_index(np.argmax(pcoef[jj,:,:], axis=None), pcoef.shape) ;            
             Lmaxc[jj] = L[ind[1]]
             
             
@@ -210,8 +210,8 @@ if __name__ == '__main__':
             
 #
             jj = jj + 1
-          
-
+#          
+#
 #get rid of max correlations under a certain value u
 u = 0.7
 #indcorr = np.where(corrmax>u) 
@@ -223,9 +223,9 @@ P1 = np.mean(pcoefrec, axis = 0)
 #
 fig, ax = plt.subplots(1,1)
 im = ax.imshow(np.transpose(P), vmin=np.mean(P), vmax=np.max(P), origin='lower')
-#ax.set_xticks(np.arange(0, NL, 5))
-#ax.set_yticks(np.arange(0, N, 5))
-#ax.set_xticklabels(L[np.arange(0, NL, 5)])
+ax.set_xticks(np.arange(0, NL, np.int(NL/DL)))
+##ax.set_yticks(np.arange(0, N, 5))
+ax.set_xticklabels(L[np.arange(0, NL, np.int(NL/DL))])
 #ax.set_yticklabels(ang[np.arange(0, N, 5)])
 cbar = fig.colorbar(im)
 #
