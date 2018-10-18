@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 plt.rcParams.update({'figure.max_open_warning': 0})
 from scipy.stats import norm
 from scipy import signal
+from scipy import stats
 from scipy.stats.stats import pearsonr
 from scipy.stats.stats import spearmanr
 from scipy.spatial import distance
@@ -25,8 +26,15 @@ class exp_profiles:
     
     def __init__(self, d, *args, **kwargs):
         
-        self.rootdir = r"C:\Users\CibionPC\Documents\Lu Lopez\Actin Spectrin Rings\Exp Analysis\STED profiles"
-        self.folders = ['DIV8', 'DIV14', 'DIV21', 'DIV28', 'DIV40', 'sim100bis']
+#        self.rootdir = r"C:\Users\CibionPC\Documents\Lu Lopez\Actin Spectrin Rings\Exp Analysis\STED profiles"
+#        self.folders = ['DIV8', 'DIV14', 'DIV21', 'DIV28', 'DIV40', 'Actin']
+        
+#        self.rootdir = r"C:\Users\CibionPC\Documents\Lu Lopez\Actin Spectrin Rings\Simulated Images"
+#        self.folders = ['nostruct']
+        
+        self.rootdir = r"C:\Users\CibionPC\Documents\Lu Lopez\Actin Spectrin Rings\Simulated Images\181016\Profiles"
+#        self.folders = ['L160']
+        self.folders = ['L20', 'L30', 'L40', 'L50', 'L60', 'L70', 'L80', 'L90', 'L100','L110', 'L120', 'L130', 'L140','L150', 'L160', 'L170', 'L180', 'L190']
         self.pxSize = 20 # px size in nm
         
         self.π = np.pi
@@ -37,6 +45,7 @@ class exp_profiles:
         self.width = {}
         self.Nrings = {}
         self.pexp = {}
+        self.pexpn = {}
         self.D = {}
         self.center = {}
         self.Npoints = {}
@@ -69,6 +78,7 @@ class exp_profiles:
             self.Nrings[i] = np.shape(self.axon[i])[0]    
             for j in np.arange(self.Nrings[i]):
                 self.pexp[i,j] = self.axon[i][j]
+                self.pexpn[i,j] = self.pexp[i,j]/np.max(self.pexp[i,j])
                 self.width[i,j] = len(self.pexp[i,j][self.pexp[i,j]!=0])
                 self.D[i,j] = self.width[i,j]*self.pxSize
                 self.center[i,j] = np.argmax(self.pexp[i,j]>0)*self.pxSize + self.D[i,j]/2
@@ -85,6 +95,7 @@ class actin_ring:
         self.L = L # actin filament lenght in nm
         self.N = N #total number of rotations
         self.rxy = 40  # radial sigma in nm
+        self.r = self.rxy/2.35
         self.D = D -2*self.rxy# axon diameter in nm
         self.x = x # distance in nm
         self.Npoints = len(self.x)
@@ -122,125 +133,148 @@ class actin_ring:
         
         distpdfn = np.ones((self.K,self.Npoints))
         self.psim = np.ones((self.N, self.Npoints))
+        self.psimn = np.ones((self.N, self.Npoints))
         for i in np.arange(self.N):
             for k in np.arange(self.K):    
     #             mask = np.random.binomial(1, self.S, self.K)             
-                 sigma = self.rxy
+                 sigma = self.r
                  mu = self.posx[i,k]
                  dist = norm(mu, sigma)
                  distpdfn[k,:] = dist.pdf(self.x)/max(dist.pdf(self.x))
                  
             self.psim[i,:] = np.sum(distpdfn, axis = 0)
+            self.psim[i,:] = np.round(self.psim[i,:], decimals = 3)
+            self.psimn[i,:] = self.psim[i,:]/np.max(self.psim[i,:])
         
 
 if __name__ == '__main__':
     
     # load all exp profiles from axons and rings of selected DIV
     # 0 8DIV 1 14DIV 2 21DIV 3 28DIV 4 40DIV
-    ring_exp = exp_profiles(5)
-    pexp = ring_exp.pexp;
-    Naxons = ring_exp.Naxons;
-    Nrings = ring_exp.Nrings;
-    x = ring_exp.x;
-    D = ring_exp.D;
-    center = ring_exp.center;
+    for m in np.arange(4,15,1):
+        ring_exp = exp_profiles(m);
+        pexp = ring_exp.pexp;
+    #        pexpn = ring_exp.pexpn;
+        Naxons = ring_exp.Naxons;
+        Nrings = ring_exp.Nrings;
+        x = ring_exp.x;
+        D = ring_exp.D;
+        center = ring_exp.center;
+            
+        # L range to scan in simulated ring
+        Lmin = 50; 
+        Lmax = 200;
+        DL = 10;
+        NL = np.int((Lmax-Lmin)/DL);
+        L = np.arange(Lmin, Lmax, DL);
         
-    # L range to scan in simulated ring
-    Lmin = 40; 
-    Lmax = 240;
-    DL = 10;
-    NL = np.int((Lmax-Lmin)/DL);
-    L = np.arange(Lmin, Lmax, DL);
+        # number of rotations φ for each L
+        N = 5;
     
-    # number of rotations φ for each L
-    N = 10;
-
+        
+        # define empty arrays for pearson corr (pcoef)
+        pcoef = {}
+        s = np.ones(Naxons);
+        for i in np.arange(Naxons):
+            s[i] = Nrings[i];
+        NringsT = np.int(np.sum(s));
+        
     
-    # define empty arrays for pearson corr (pcoef)
-#    pcoef = {}
-    s = np.ones(Naxons);
-    for i in np.arange(Naxons):
-        s[i] = Nrings[i];
-    NringsT = np.int(np.sum(s));
+        Npoints = {};
+        pcoef = np.ones((NringsT, NL, N))
+    #        rlin = np.ones((NringsT, NL, N))
+    #        pcoefrec = np.ones((NringsT, NL, N))
     
-
-    Npoints = {};
-    pcoef = np.ones((NringsT, NL, N))
-    pcoefrec = np.ones((NringsT, NL, N))
-
+        
+        Lmaxc = np.zeros((NringsT))
+    #        Kmax = np.zeros((NringsT))
+    #        phimax = np.zeros((NringsT))
+        corrmax = np.zeros((NringsT))
+        rlinmax = np.zeros((NringsT))
     
-    Lmaxc = np.zeros((NringsT))
-    Kmax = np.zeros((NringsT))
-    phimax = np.zeros((NringsT))
-    corrmax = np.zeros((NringsT))
-
-
-    jj = 0
-    for i in np.arange(Naxons):
-        Npoints[i] = ring_exp.Npoints[i]
-        for j in np.arange(Nrings[i]):
-#            fig,ax = plt.subplots(1,2)
-#            ax[0].plot(x[i], pexp[i,j])
-            centerind = center[i,j]/20
-            Dind = D[i,j]/20;
-            minind = np.int(centerind-(Dind/2+1));
-            maxind = np.int(centerind+(Dind/2+1));
-            pexprec = pexp[i,j][minind:maxind];
-            pexprecn = pexprec/(np.max(pexprec))
-#            ax[0].plot(x[i][minind:maxind], pexprec)
-            for k in np.arange(NL):
-                ring_sim = actin_ring(L[k], N, D[i,j],x[i], center[i,j]);
-                psim = ring_sim.psim                
-                psimrec = psim[:,minind:maxind];
-                psimrecn = psimrec/np.max(psimrec)
-                for l in np.arange(N):
-#                    ax[1].plot(x[i], psim[l,:])
-#                    ax[1].plot(x[i][minind:maxind], psimrec[l,:])
-                    pcoef[jj, k, l] = pearsonr(psim[l,:], pexp[i,j])[0]
-                    pcoefrec[jj, k, l] = pearsonr(psimrecn[l,:], pexprecn)[0]
     
-            ind = np.unravel_index(np.argmax(pcoef[jj,:,:], axis=None), pcoef.shape) ;            
-            Lmaxc[jj] = L[ind[1]]
-            
-            
-            Kmax[jj] = np.int(np.pi/(np.arcsin(Lmaxc[jj]/D[i,j])))
-
-            corrmax[jj] = pcoef[jj,ind[1], ind[2]]
-            corrmax[jj] = np.round(corrmax[jj], decimals=2)
-            
+        jj = 0
+        for i in np.arange(Naxons):
+            Npoints[i] = ring_exp.Npoints[i]
+            for j in np.arange(Nrings[i]):
+    #            fig,ax = plt.subplots(1,2)
+    #            ax[0].plot(x[i], pexp[i,j])
+                centerind = center[i,j]/20
+                Dind = D[i,j]/20;
+                minind = np.int(centerind-(Dind/2 + 1) + 2);
+                maxind = np.int(centerind+(Dind/2 + 1) - 2);
+                pexprec = pexp[i,j][minind:maxind];
+    #                pexprecn = pexprec/(np.max(pexprec))
+    #            ax[0].plot(x[i][minind:maxind], pexprec)
+                for k in np.arange(NL):
+                    ring_sim = actin_ring(L[k], N, D[i,j],x[i], center[i,j]);
+                    psim = ring_sim.psim   
+    #                    psimn = ring_sim.psimn
+                    psimrec = psim[:,minind:maxind];
+    #                    psimrecn = psimrec/np.max(psimrec)
+                    for l in np.arange(N):
+    #                    ax[1].plot(x[i], psim[l,:])
+    #                    ax[1].plot(x[i][minind:maxind], psimrec[l,:])
+    #                        pcoef[jj, k, l] = pearsonr(psimn[l,:], pexpn[i,j])[0]
+                        pcoef[jj, k, l] = pearsonr(psimrec[l,:], pexprec)[0]
+    #                    pcoef[jj, k, l] = pearsonr(psim[l,:], pexp[i,j])[0]
+    #                        rlin[jj, k, l] = stats.linregress(psim[l,:], pexp[i,j]).rvalue
+     
+                         
+                ind = np.unravel_index(np.argmax(pcoef[jj,:,:], axis=None), pcoef.shape) ; 
+    #                ind = np.unravel_index(np.argmax(rlin[jj,:,:], axis=None), rlin.shape) ;
+                Lmaxc[jj] = L[ind[1]]
+                
+    #                
+    #                Kmax[jj] = np.int(np.pi/(np.arcsin(Lmaxc[jj]/D[i,j])))
+    #                rlinmax[jj] = rlin[jj,ind[1], ind[2]]
+                corrmax[jj] = pcoef[jj,ind[1], ind[2]]
+    #                corrmax[jj] = np.round(corrmax[jj], decimals=2)
+                ##get rid of max correlations under a certain value u
+    #                u = 0.8
+    #                indcorr = np.where(rlinmax>u) 
+    #                Lcorr = Lmaxc[indcorr]
+                
+    #
+                jj = jj + 1
+    #
+      
+        print(m) 
+        print(np.mean(Lmaxc))
+        print(np.std(Lmaxc))
+    #get rid of max correlations under a certain value u
+#        u = 0.8
+#        indcorr = np.where(corrmax>u) 
+#        Lcorr = Lmaxc[indcorr]
+#        
+#        print(np.mean(Lcorr))
+#        print(np.std(Lcorr))
+#indcorr = [(corrmax >= u) & (corrmax < 1)]
+##and np.where(corrmax<1)
+##
+#    P = np.mean(pcoef, axis = 0)
 #
-            jj = jj + 1
-#          
-#
-#get rid of max correlations under a certain value u
-u = 0.7
-#indcorr = np.where(corrmax>u) 
-indcorr = [(corrmax >= u) & (corrmax < 1)]
-#and np.where(corrmax<1)
-
-P = np.mean(pcoef, axis = 0)
-P1 = np.mean(pcoefrec, axis = 0)
-#
-fig, ax = plt.subplots(1,1)
-im = ax.imshow(np.transpose(P), vmin=np.mean(P), vmax=np.max(P), origin='lower')
-ax.set_xticks(np.arange(0, NL, np.int(NL/DL)))
-##ax.set_yticks(np.arange(0, N, 5))
-ax.set_xticklabels(L[np.arange(0, NL, np.int(NL/DL))])
-#ax.set_yticklabels(ang[np.arange(0, N, 5)])
-cbar = fig.colorbar(im)
-#
-#
-#  
-##Paux = pcoef[indcorr[0],:,:]
-##P = np.mean(Paux, axis = 0)
-#
-fig2, ax2 = plt.subplots(1,1)
-im2 = ax2.imshow(np.transpose(P1), vmin=np.mean(P1), vmax=np.max(P1), origin='lower')
-#ax2.set_xticks(np.arange(0, NL, 5))
-#ax2.set_yticks(np.arange(0, N, 5))
-#ax2.set_xticklabels(L[np.arange(0, NL, 5)])
-#ax2.set_yticklabels(ang[np.arange(0, N, 5)])
-cbar2 = fig2.colorbar(im2)
+#    ##
+#    fig, ax = plt.subplots(1,1)
+#    im = ax.imshow(np.transpose(P), vmin=np.mean(P), vmax=np.max(P), origin='lower')
+#    ax.set_xticks(np.arange(0, NL, 2*np.int(NL/DL)))
+#    ##ax.set_yticks(np.arange(0, N, 5))
+#    ax.set_xticklabels(L[np.arange(0, NL, 2*np.int(NL/DL))])
+#    #ax.set_yticklabels(ang[np.arange(0, N, 5)])
+#    cbar = fig.colorbar(im)
+##
+##
+##  
+###Paux = pcoef[indcorr[0],:,:]
+###P = np.mean(Paux, axis = 0)
+##
+#fig2, ax2 = plt.subplots(1,1)
+#im2 = ax2.imshow(np.transpose(P1), vmin=np.mean(P1), vmax=np.max(P1), origin='lower')
+#ax.set_xticks(np.arange(0, NL, np.int(NL/DL)))
+###ax.set_yticks(np.arange(0, N, 5))
+#ax.set_xticklabels(L[np.arange(0, NL, np.int(NL/DL))])
+##ax2.set_yticklabels(ang[np.arange(0, N, 5)])
+#cbar2 = fig2.colorbar(im2)
 
      
     

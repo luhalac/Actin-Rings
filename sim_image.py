@@ -30,10 +30,10 @@ class sim_image:
         self.phase = 0.25
         self.b = 6
         self.theta = 90 # axon orientation (if 90, vertical axon)
-        self.c = 0.7 # contrast
+        self.c = 0.9 # contrast
         
         # ring model parameters
-        self.r = 20  # ring widht CHEQUEAR ESTO 
+        self.r = self.sigma  # CHEQUEAR ESTO 
         self.D = self.D0 - 2*self.r
         self.L = L # actin filament lenght in nm        
         self.K = np.int(self.π/(np.arcsin(L/self.D))) # number of vertices  
@@ -44,11 +44,10 @@ class sim_image:
         
         
         self.g_noise=0.2
-
         self.label = 0.02 # labeling efficency
 
         self.ringstrc = True
-        self.signal= 50
+        self.signal= 100
         self.poisson = True
 
         
@@ -65,8 +64,8 @@ class sim_image:
     
         for k in np.arange(self.K):
             θ = self.π * 2*k/self.K + self.φ
-            posdelta = np.random.uniform(0,self.r)
-            self.posx[k]= (self.D/2)*np.cos(θ) + self.center + posdelta
+#            posdelta = np.random.uniform(0,self.r)
+            self.posx[k]= (self.D/2)*np.cos(θ) + self.center 
             self.posxround[k]= np.round(self.posx[k], decimals=0)
     
         distpdfn = np.ones((self.K,self.Npoints))
@@ -127,15 +126,15 @@ class sim_image:
             
             self.offset = np.max(self.ring_mask)*(1.5-self.c)/2*self.c
             #normalizes and creates the final simulated axon with spectrin rings
-            norm_f = np.max(self.ring_mask+ self.offset*self.axon_mask)        
-            self.axon_res = (self.ringpattern*self.axon_mask*self.ring_mask + self.offset*self.axon_mask)/norm_f
+            norm_f = np.max(self.ring_mask+ 0.002*self.offset*self.axon_mask)        
+            self.axon_res = (self.ringpattern*self.axon_mask*self.ring_mask + 0.002*self.offset*self.axon_mask)/norm_f
             self.axon_res = self.axon_res + self.g_noise*np.random.rand(self.im_size, self.im_size)
 #           axon_res = ndi.rotate(axon_res, angle, reshape=False)
         
         # if ringstrc is False, no ring profile
         if self.ringstrc == False:
             # for axon without ring structure
-            self.offset = np.max(self.ring_pattern)*(1.5-self.c)/2*self.c
+            self.offset = np.max(self.ringpattern)*(1.5-self.c)/2*self.c
             norm_f = np.max(self.ringpattern+ self.offset*self.axon_mask)        
             self.axon_res = (self.ringpattern*self.axon_mask+ self.offset*self.axon_mask)/norm_f
             self.axon_res = self.axon_res + self.g_noise*np.random.rand(self.im_size, self.im_size)
@@ -196,12 +195,21 @@ class sim_image:
 
 
 if __name__ == '__main__':
-    
-    
-  L =100
-  for i in np.arange(10):
-      im = sim_image(L)
-      tiff.imsave('L{}i{}.tiff'.format(L,i), im.subimage)
+#  
+#   for k in np.arange(20):
+#       
+#       im = sim_image(100)
+#       tiff.imsave('nostructi{}.tiff'.format(k), im.subimage)
+  Lmin = 100; 
+  Lmax = 200;
+  DL = 10;
+  NL = np.int((Lmax-Lmin)/DL);  
+  L = np.arange(Lmin, Lmax, DL);
+
+  for k in np.arange(NL):
+      for i in np.arange(1):
+          im = sim_image(L[k])
+          tiff.imsave('L{}i{}.tiff'.format(L[k],i), im.subimage)
 
 
 
