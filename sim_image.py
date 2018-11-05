@@ -46,8 +46,8 @@ class sim_image:
         self.g_noise=0.2
         self.label = 0.02 # labeling efficency
 
-        self.ringstrc = True
-        self.signal= 100
+        self.ringstrc = False
+        self.signal= 50
         self.poisson = True
 
         
@@ -137,10 +137,10 @@ class sim_image:
             self.offset = np.max(self.ringpattern)*(1.5-self.c)/2*self.c
             norm_f = np.max(self.ringpattern+ self.offset*self.axon_mask)        
             self.axon_res = (self.ringpattern*self.axon_mask+ self.offset*self.axon_mask)/norm_f
-            self.axon_res = self.axon_res + self.g_noise*np.random.rand(self.im_size, self.im_size)
+            self.axon_res2 = self.axon_res + self.g_noise*np.random.rand(self.im_size, self.im_size)
         
 
-        self.data = self.axon_res.astype(np.float32) # result to be used in simulations
+        self.data = self.axon_res2.astype(np.float32) # result to be used in simulations
 
 
     def imageAxon(self):
@@ -194,24 +194,19 @@ class sim_image:
 
 
 
-if __name__ == '__main__':
+#if __name__ == '__main__':
 #  
 #   for k in np.arange(20):
 #       
 #       im = sim_image(100)
 #       tiff.imsave('nostructi{}.tiff'.format(k), im.subimage)
-  Lmin = 100; 
-  Lmax = 200;
-  DL = 10;
-  NL = np.int((Lmax-Lmin)/DL);  
-  L = np.arange(Lmin, Lmax, DL);
-
-  for k in np.arange(NL):
-      for i in np.arange(1):
-          im = sim_image(L[k])
-          tiff.imsave('L{}i{}.tiff'.format(L[k],i), im.subimage)
-
-
-
-
-
+#  Lmin = 20; 
+#  Lmax = 220;
+#  DL = 10;
+#  NL = np.int((Lmax-Lmin)/DL);  
+#  L = np.arange(Lmin, Lmax, DL);
+#
+#  for k in np.arange(NL):
+#      for i in np.arange(1):
+#          im = sim_image(L[k])
+#          tiff.imsave('L{}i{}.tiff'.format(L[k],i), im.subimage)
